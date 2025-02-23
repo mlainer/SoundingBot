@@ -16,16 +16,51 @@ hh <- as.integer(args[6])
 myparcel <- args[7]
 filename <- args[8]
 
-# Fetch the sounding profile using the passed arguments
-# Define the URL and destination file path
-url <- "https://data.geo.admin.ch/ch.meteoschweiz.messwerte/radiosondierungen/VZUS01.csv"
-destfile <- "/app/VZUS01.csv"
+# Define the directory where Payerne soundings are stored inside the Docker container
+sounding_dir <- "/app/data/Soundings"
 
-# Download the CSV file
-download.file(url, destfile, method = "curl")
+# Construct the expected filename
+requested_file <- sprintf("%04d%02d%02d-%02d_PAY.csv", yy, mm, dd, hh)
 
-# Load the CSV file with the correct header lines skipped and space as the separator
-data <- read.csv(destfile, skip = 2, sep = " ", header = FALSE, encoding = "ISO-8859-1")
+# Full path to the requested file inside the container
+file_path <- file.path(sounding_dir, requested_file)
+
+# Default to the requested date/time
+actual_yy <- yy
+actual_mm <- mm
+actual_dd <- dd
+actual_hh <- hh
+
+# Check if the file exists, otherwise download the latest sounding
+if (!file.exists(file_path)) {
+  cat(sprintf("Warning: Sounding file %s not found. Downloading latest available data...\n", requested_file))
+  
+  # Define the URL and temporary destination file inside the container
+  url <- "https://data.geo.admin.ch/ch.meteoschweiz.messwerte/radiosondierungen/VZUS01.csv"
+  temp_file <- "/app/VZUS01.csv"
+  
+  # Download the latest CSV file
+  download.file(url, temp_file, method = "curl")
+  
+  # Use the downloaded file instead
+  file_path <- temp_file
+  
+  # Read the first few rows to extract the correct timestamp (skip first 2 lines)
+  latest_data <- read.csv(temp_file, skip = 2, sep = " ", header = FALSE, encoding = "ISO-8859-1")
+  
+  # Extract the timestamp from the second column of the third row (first data row)
+  latest_timestamp <- as.character(latest_data[1, 2])  # Example: "202407041200"
+
+  if (!is.na(latest_timestamp) && nchar(latest_timestamp) == 12) {
+    actual_yy <- as.integer(substr(latest_timestamp, 1, 4))   # 2024
+    actual_mm <- as.integer(substr(latest_timestamp, 5, 6))   # 07
+    actual_dd <- as.integer(substr(latest_timestamp, 7, 8))   # 04
+    actual_hh <- as.integer(substr(latest_timestamp, 9, 10))  # 12
+  }
+}
+
+# Read the CSV file
+data <- read.csv(file_path, skip = 2, sep = " ", header = FALSE, encoding = "ISO-8859-1")
 
 # Convert relevant columns to numeric format
 pressure <- as.numeric(data[, 10])
@@ -35,7 +70,7 @@ dpt <- as.numeric(data[, 14])
 wd <- as.numeric(data[, 15])
 ws <- as.numeric(data[, 16])
 
-# Create the profile data frame with numeric columns
+# Create the profile data frame
 profile <- data.frame(
   pressure = pressure[2:100],   # Column 10: pressure
   altitude = altitude[2:100],   # Column 11: altitude
@@ -45,11 +80,13 @@ profile <- data.frame(
   ws = ws[2:100]                # Column 16: wind speed
 )
 
-# Generate filename and title based on the station and sounding time
-title <- sprintf("%s - %02d %s %04d %04d UTC", station, dd, month.abb[mm], yy, hh * 100)
+# Generate the correct title with the actual date (either requested or latest downloaded)
+title <- sprintf("%s - %02d %s %04d %04d UTC", station, actual_dd, month.abb[actual_mm], actual_yy, actual_hh * 100)
 
 # Save the sounding profile to a file
 sounding_save(filename = filename, title = title,
               parcel = myparcel, SRH_polygon = "03km",
               profile$pressure, profile$altitude, 
               profile$temp, profile$dpt, profile$wd, profile$ws)
+
+cat(sprintf("Successfully processed and saved: %s\n", filename))
