@@ -17,7 +17,7 @@ myparcel <- args[7]
 filename <- args[8]
 
 # Define the directory where Payerne soundings are stored inside the Docker container
-sounding_dir <- "/app/data/Soundings"
+sounding_dir <- "/data/Soundings"
 
 # Construct the expected filename
 requested_file <- sprintf("%04d%02d%02d-%02d_PAY.csv", yy, mm, dd, hh)
