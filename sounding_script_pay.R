@@ -2,6 +2,7 @@
 
 # Load the necessary library
 library(thunder)
+library(climate)
 
 # Read command line arguments
 args <- commandArgs(trailingOnly = TRUE)
