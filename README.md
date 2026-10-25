@@ -156,6 +156,7 @@ The Python bot receives the command, maps the station name to its WMO ID, runs `
 | "Failed to generate the sounding plot." | No sounding for that station and time, or the data service is down. Check `docker compose logs` for the R error |
 | "Unknown station" | Station names are case-sensitive, see `/stations` |
 | Nothing happens in Telegram | Make sure only one program polls the same bot token |
+| Overlapping text in the plot or `<U+00B0>` instead of `°` | The plot layout expects Helvetica-width fonts and a UTF-8 locale. The Dockerfile installs Liberation Sans and sets `LANG=C.UTF-8`; outside Docker install `fonts-liberation` and use a UTF-8 locale |
 
 ## Acknowledgements
 
