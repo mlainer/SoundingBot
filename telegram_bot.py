@@ -57,7 +57,11 @@ HELP_TEXT = (
     "/sounding <station> <year> <mm> <dd> <hh> <parcel>\n"
     "  Example: /sounding Stuttgart 2024 07 01 12 MU\n"
     "  hh = hour in UTC (usually 00 or 12)\n"
-    "  parcel = MU, ML, SB or none\n\n"
+    "  parcel = the air parcel that is lifted (CAPE, CIN, ...):\n"
+    "    MU = most unstable: highest theta-e in the lowest 3 km\n"
+    "    ML = mixed layer: average of the lowest 500 m\n"
+    "    SB = surface based: air from the ground\n"
+    "    none = no parcel line\n\n"
     "/stations - list available stations\n"
     "/help - show this message"
 )

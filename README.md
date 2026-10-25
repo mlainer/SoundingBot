@@ -47,7 +47,20 @@ Arguments of `/sounding`:
 | `year`    | 4-digit year                                         | `2024`     |
 | `mm dd`   | Month and day                                        | `07 01`    |
 | `hh`      | Hour in UTC (usually `00` or `12`)                   | `12`       |
-| `parcel`  | `MU` most unstable, `ML` mixed layer, `SB` surface-based, `none` for no parcel line | `MU` |
+| `parcel`  | Parcel type, see below | `MU` |
+
+### Parcel types
+
+The parcel is the air parcel that is lifted to compute CAPE, CIN, LCL, LFC and EL, and that is drawn as a line in the Skew-T.
+
+| Parcel | Name | Meaning | Typical use |
+|--------|------|---------|-------------|
+| `MU` | most unstable | Parcel with the highest equivalent potential temperature (theta-e) in the lowest 3 km | Largest possible CAPE, also for elevated convection above a stable surface layer |
+| `ML` | mixed layer | Average of the lowest 500 m | Representative, less sensitive to a shallow moist or dry surface layer |
+| `SB` | surface based | Air at the lowest level (the ground) | Convection rooted in the surface layer, e.g. on warm afternoons |
+| `none` | no parcel | No parcel line in the Skew-T | Plot without parcel-based values |
+
+`MU` usually gives the largest CAPE. If the values differ strongly between the parcel types, the lowest levels are stratified (e.g. a stable surface layer or a shallow moist layer), so compare them.
 
 Example:
 
