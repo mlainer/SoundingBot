@@ -1,7 +1,13 @@
+import asyncio
+import logging
 import subprocess
 import os
 from telegram import Update, InputFile
 from telegram.ext import Application, CommandHandler, ContextTypes
+
+logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s: %(message)s", level=logging.INFO)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logger = logging.getLogger("sounding_bot")
 
 # Token from the environment; falls back to a local mysecret.py (API_TOKEN) for older setups
 API_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -99,15 +105,19 @@ async def sounding(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         hh = int(args[4])
         myparcel = args[5]
 
-        # Call the sounding script
-        filename = call_sounding_script(station, yy, mm, dd, hh, myparcel)
+        # Run R in a worker thread so the bot's event loop (Telegram polling) is not blocked
+        filename = await asyncio.to_thread(call_sounding_script, station, yy, mm, dd, hh, myparcel)
         if filename:
             await update.message.reply_text('Sounding plot generated successfully.')
+            # Uploads can take a while; the default 5 s read timeout produced "Timed out" errors
             with open(filename, 'rb') as photo:
-                await update.message.reply_photo(photo=InputFile(photo))
+                await update.message.reply_photo(
+                    photo=InputFile(photo),
+                    read_timeout=60, write_timeout=60, connect_timeout=30, pool_timeout=30)
         else:
             await update.message.reply_text('Failed to generate the sounding plot.')
     except Exception as e:
+        logger.exception("sounding command failed")
         await update.message.reply_text(f'Error: {str(e)}')
 
 # Command handler for /stations
@@ -117,7 +127,12 @@ async def stations(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 def main() -> None:
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token(API_TOKEN).build()
+    application = (
+        Application.builder()
+        .token(API_TOKEN)
+        .read_timeout(30).write_timeout(30).connect_timeout(30).pool_timeout(30)
+        .build()
+    )
 
     # Add command handler to start the bot
     application.add_handler(CommandHandler("start", start))

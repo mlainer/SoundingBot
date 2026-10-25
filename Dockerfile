@@ -2,6 +2,8 @@ FROM ubuntu:jammy
 
 WORKDIR /app
 
+ENV PYTHONUNBUFFERED=1
+
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update

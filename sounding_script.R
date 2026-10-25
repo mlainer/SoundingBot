@@ -30,6 +30,12 @@ if (!is.data.frame(profile_data) || !all(required_columns %in% names(profile_dat
                              wmo_id, yy, mm, dd, hh))
 }
 
+# Some soundings have levels with missing values (e.g. blank HGHT), which breaks the plot
+profile_data <- profile_data[complete.cases(profile_data[, required_columns]), ]
+if (nrow(profile_data) < 2) {
+    stop("Too few complete levels in the sounding.")
+}
+
 # Generate filename and title based on the station and sounding time
 title <- sprintf("%s - %02d %s %04d %04d UTC", station, dd, month.abb[mm], yy, hh * 100)
 
