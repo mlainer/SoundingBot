@@ -1,0 +1,6 @@
+.git
+.env
+mysecret.py
+soundings
+__pycache__
+*.md

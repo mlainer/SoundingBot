@@ -1,0 +1,10 @@
+name: sounding-bot
+services:
+  sounding-bot:
+    build: .
+    container_name: sounding-bot
+    restart: unless-stopped
+    env_file: .env
+    # Optional: local Payerne archive (files named YYYYMMDD-HH_PAY.csv)
+    # volumes:
+    #   - /path/to/Soundings:/data/Soundings:ro

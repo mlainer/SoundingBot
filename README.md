@@ -1,132 +1,156 @@
-# Sounding Plot Bot
+# 🎈 SoundingBot
 
-## Overview
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white)
+![R](https://img.shields.io/badge/R-thundeR-276DC3?logo=r&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
+![Telegram](https://img.shields.io/badge/Telegram-bot-26A5E4?logo=telegram&logoColor=white)
 
-The Sounding Plot Bot is a Telegram bot that generates atmospheric radio sounding plots for various stations using an R script. Users can request sounding plots by specifying the station name and the desired date and time.
+A Telegram bot that draws **atmospheric sounding plots** (Skew-T, hodograph and convective parameters) for European radiosonde stations. Send a station, a date and a parcel type, and the bot replies with the plot as an image.
+
+> Unofficial hobby project for weather enthusiasts. Plots are for information only and not a substitute for official forecasts or warnings.
+
+## Contents
+
+- [Features](#features)
+- [Commands](#commands)
+- [Quick start (Docker)](#quick-start-docker)
+- [Configuration](#configuration)
+- [Stations](#stations)
+- [Data sources](#data-sources)
+- [How it works](#how-it-works)
+- [Troubleshooting](#troubleshooting)
+- [Acknowledgements](#acknowledgements)
+- [License](#license)
 
 ## Features
 
-- Generate sounding plots for specified weather stations and times.
-- List available weather stations.
-- Simple and intuitive commands to interact with the bot.
+- Skew-T / hodograph plots with the parcel line of your choice (`MU`, `ML`, `SB` or none)
+- 30 stations across Europe, addressed by name
+- Payerne soundings from a local archive or, if the file is missing, the latest MeteoSwiss sounding
+- Runs completely in Docker; no R or Python setup on the host
 
 ## Commands
 
-- `/start`: Start the bot and get a welcome message with usage instructions.
-- `/sounding <station> <yy> <mm> <dd> <hh>`: Generate a sounding plot for the specified station and date/time.
-- `/stations`: List all available stations that can be used with the bot.
+| Command | Description |
+|---------|-------------|
+| `/start` | Welcome message with usage hint |
+| `/stations` | Lists all available stations |
+| `/sounding <station> <year> <mm> <dd> <hh> <parcel>` | Generates the plot |
 
-## Installation
+Arguments of `/sounding`:
 
-### Prerequisites
+| Argument  | Meaning                                              | Example    |
+|-----------|------------------------------------------------------|------------|
+| `station` | Station name from `/stations` (**case-sensitive**)   | `Stuttgart`|
+| `year`    | 4-digit year                                         | `2024`     |
+| `mm dd`   | Month and day                                        | `07 01`    |
+| `hh`      | Hour in UTC (usually `00` or `12`)                   | `12`       |
+| `parcel`  | `MU` most unstable, `ML` mixed layer, `SB` surface-based, `none` for no parcel line | `MU` |
 
-- Docker
+Example:
 
-### Setup
+```
+/sounding Stuttgart 2024 07 01 12 MU
+```
 
-1. Clone the repository or download the script files.
+Typical replies:
 
-2. Build the Docker image:
-    ```sh
-    docker build -t sounding-plot-bot .
-    ```
+| Situation | Reply |
+|-----------|-------|
+| Success | `Sounding plot generated successfully.` followed by the image |
+| Unknown station | `Error: Unknown station: <station>` |
+| No data or plotting failed | `Failed to generate the sounding plot.` |
+| Wrong number of arguments | `Usage: /sounding <station> <year> <mm> <dd> <hh> <parcel: MU\|ML\|SB\|none>` |
 
-3. Run the Docker container:
-    ```sh
-    docker run -d --name sounding-plot-bot sounding-plot-bot
-    ```
+## Quick start (Docker)
 
-### Configuration
+You need Docker and a Telegram bot token from [@BotFather](https://t.me/BotFather) (`/newbot`).
 
-1. Obtain your Telegram bot token from [BotFather](https://core.telegram.org/bots#botfather) on Telegram.
+```bash
+git clone https://github.com/mlainer/SoundingBot.git
+cd SoundingBot
+cp .env.example .env        # put your token into .env
+docker compose up -d --build
+docker compose logs -f      # Ctrl+C leaves the log view, the bot keeps running
+```
 
-2. Modify the `telegram_bot.py` file to replace the placeholder token with your actual Telegram bot token:
-    ```python
-    application = Application.builder().token("YOUR_TELEGRAM_BOT_TOKEN").build()
-    ```
+The first build takes a while because R and thundeR are compiled.
 
-## Usage
+Without Compose:
 
-1. Start a chat with your bot on Telegram.
+```bash
+docker build -t sounding-plot-bot .
+docker run -d --name sounding-plot-bot --restart unless-stopped \
+  -e TELEGRAM_BOT_TOKEN=<your-token> sounding-plot-bot
+```
 
-2. Use the `/start` command to get started and see the usage instructions.
+## Configuration
 
-3. Use the `/sounding` command followed by the station name and date/time parameters to generate a sounding plot. Example:
-    ```
-    /sounding Stuttgart 2023 07 01 12
-    ```
+| Setting | Required | Description |
+|---------|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | yes | Bot token from @BotFather, passed as environment variable (via `.env` with Compose) |
+| `/data/Soundings` (volume) | no | Local Payerne archive, files named `YYYYMMDD-HH_PAY.csv`. See the commented volume in [docker-compose.yml](docker-compose.yml) |
 
-4. Use the `/stations` command to list all available stations.
+For older setups a `mysecret.py` containing `API_TOKEN = "..."` is still used if the environment variable is not set. Never commit your token: `.env` and `mysecret.py` are listed in `.gitignore`.
 
-## Example
+Anyone who finds your bot can use it. Keep the bot's username private or add a user check if you run it for a closed group.
 
-1. Start the bot:
-    ```
-    /start
-    ```
+## Stations
 
-    Response:
-    ```
-    Hi! Use /sounding <station> <yy> <mm> <dd> <hh> to get the sounding plot.
-    ```
+Use the name exactly as written. WMO IDs are the radiosonde station numbers.
 
-2. List available stations:
-    ```
-    /stations
-    ```
+| Station | WMO | Station | WMO | Station | WMO |
+|---------|-----|---------|-----|---------|-----|
+| Athens | 16716 | Lindenberg | 10393 | Prag | 11520 |
+| Belgrade | 13275 | Lipi | 16045 | Rome | 16242 |
+| Bucharest | 15420 | Lire | 16245 | Sodankyla | 2836 |
+| Budapest | 12843 | Lyon | 7481 | Stuttgart | 10739 |
+| Copenhagen | 6180 | Madrid | 8221 | Toulouse | 7630 |
+| Dublin | 3918 | Meiningen | 10548 | Valentia | 3953 |
+| Essen | 10410 | Milano | 16064 | Vienna | 11035 |
+| Idar-Oberstein | 10618 | Munich | 10868 | Zagreb | 14240 |
+| Jokioinen | 2963 | Nimes | 7645 | Payerne | 66800 |
+| Legionowo | 12374 | Nottingham | 3377 | Pietro | 16144 |
 
-    Response:
-    ```
-    Available stations:
-    Stuttgart
-    Munich
-    Milano
-    Payerne
-    Pietro
-    LIPI
-    Meiningen
-    Lindenberg
-    Essen
-    LIRE
-    Prag
-    ```
+`Lipi` and `Lire` are named after the ICAO codes of Udine and Pratica di Mare, and `Pietro` is San Pietro Capofiume. To add a station, extend `station_to_wmo_id` in [telegram_bot.py](telegram_bot.py).
 
-3. Generate a sounding plot for Stuttgart on July 1, 2023, at 12 UTC:
-    ```
-    /sounding Stuttgart 2023 07 01 12
-    ```
+## Data sources
 
-    Response:
-    ```
-    Sounding plot generated successfully.
-    [Plot Image]
-    ```
+- **Most stations:** the University of Wyoming sounding archive, fetched with `sounding_wyoming()` from the R package [climate](https://github.com/bczernecki/climate).
+- **Payerne:** [MeteoSwiss open data](https://opendata.swiss) (`VZUS01.csv`). If no local file exists for the requested time, the bot downloads the latest sounding and plots that one. The plot title always shows the real date and time.
 
-## Error Handling
+Availability depends on these external services. If one is down, the plot cannot be generated.
 
-- If an unknown station is provided:
-    ```
-    Unknown station: <station>
-    ```
-- If the sounding plot generation fails:
-    ```
-    Failed to generate the sounding plot.
-    ```
-- If an invalid command format is used:
-    ```
-    Usage: /sounding <station> <yy> <mm> <dd> <hh>
-    ```
+## How it works
+
+```
+Telegram  -->  telegram_bot.py  -->  Rscript sounding_script.R      -->  PNG  -->  Telegram
+                (python-telegram-bot)  Rscript sounding_script_pay.R         (thundeR)
+```
+
+The Python bot receives the command, maps the station name to its WMO ID, runs the matching R script, and sends the resulting PNG back. Plots are written to `soundings/<station>/` inside the container.
+
+## Troubleshooting
+
+| Problem | Hint |
+|---------|------|
+| Container exits right away with "Telegram token missing" | Set `TELEGRAM_BOT_TOKEN` (see [Configuration](#configuration)) |
+| "Failed to generate the sounding plot." | No sounding for that station and time, or the data service is down. Check `docker compose logs` for the R error |
+| "Unknown station" | Station names are case-sensitive, see `/stations` |
+| Nothing happens in Telegram | Make sure only one program polls the same bot token |
 
 ## Acknowledgements
 
-This project makes use of the [thundeR](https://github.com/bczernecki/thundeR) package. Special thanks to its contributors for their valuable work.
+- [thundeR](https://github.com/bczernecki/thundeR) by Bartosz Czernecki, Mateusz Taszarek and Piotr Szuster for the sounding calculations and plots
+- [climate](https://github.com/bczernecki/climate) for access to the University of Wyoming sounding data
+- [University of Wyoming](https://weather.uwyo.edu/upperair/sounding.html) and [MeteoSwiss](https://www.meteoswiss.admin.ch) for providing the data
+- [python-telegram-bot](https://python-telegram-bot.org)
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Issues and pull requests are welcome.
 
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for more details.
-
-The thundeR package is licensed under its own terms, which can be found in its [repository](https://github.com/bczernecki/thundeR).
+[GNU General Public License v3.0](LICENSE). The R packages thundeR and climate are used under their own licenses. Sounding data belongs to its providers and is subject to their terms.

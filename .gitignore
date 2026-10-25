@@ -1,0 +1,13 @@
+# secrets and runtime data
+.env
+mysecret.py
+soundings/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+
+# editor
+.vscode/
+.idea/

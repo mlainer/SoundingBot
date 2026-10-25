@@ -1,8 +1,15 @@
 import subprocess
 import os
-import mysecret
 from telegram import Update, InputFile
 from telegram.ext import Application, CommandHandler, ContextTypes
+
+# Token from the environment; falls back to a local mysecret.py (API_TOKEN) for older setups
+API_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+if not API_TOKEN:
+    try:
+        from mysecret import API_TOKEN
+    except ImportError:
+        raise SystemExit("Telegram token missing: set the TELEGRAM_BOT_TOKEN environment variable.")
 
 # Define the mapping from station names to WMO IDs
 station_to_wmo_id = {
@@ -77,14 +84,17 @@ def call_sounding_script(station, yy, mm, dd, hh, myparcel):
 
 # Command handler for /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text('Hi! Use /sounding <station> <yy> <mm> <dd> <hh> to get the sounding plot.')
+    await update.message.reply_text(
+        'Hi! Use /sounding <station> <year> <mm> <dd> <hh> <parcel> to get the sounding plot.\n'
+        'Parcel: MU, ML, SB or none. Example: /sounding Stuttgart 2024 07 01 12 MU\n'
+        'List stations with /stations.')
 
 # Command handler for /sounding
 async def sounding(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         args = context.args
         if len(args) != 6:
-            await update.message.reply_text('Usage: /sounding <station> <yy> <mm> <dd> <hh> <parcel_type>')
+            await update.message.reply_text('Usage: /sounding <station> <year> <mm> <dd> <hh> <parcel: MU|ML|SB|none>')
             return
         
         station = args[0]
