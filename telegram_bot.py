@@ -117,7 +117,7 @@ async def stations(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 def main() -> None:
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token(mysecret.API_TOKEN).build()
+    application = Application.builder().token(API_TOKEN).build()
 
     # Add command handler to start the bot
     application.add_handler(CommandHandler("start", start))
