@@ -85,6 +85,20 @@ docker run -d --name sounding-plot-bot --restart unless-stopped \
   -e TELEGRAM_BOT_TOKEN=<your-token> sounding-plot-bot
 ```
 
+### Alternative: run with the code mounted from the host
+
+Mounting the project folder over `/app` lets you change the scripts without rebuilding the image (a restart is enough). The `/data` volume is optional and only provides the local Payerne archive (`/data/Soundings`) for the fallback.
+
+```bash
+docker run -d --name sounding-plot-bot --restart unless-stopped \
+  --env-file .env \
+  --volume "$(pwd)":/app \
+  --volume /path/to/data:/data \
+  sounding-plot-bot
+```
+
+If you used this setup with a `mysecret.py` (`API_TOKEN = "..."`) in the project folder, it keeps working. Plots are then written to `soundings/` in that folder.
+
 ## Configuration
 
 | Setting | Required | Description |
