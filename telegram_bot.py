@@ -105,14 +105,17 @@ async def sounding(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         hh = int(args[4])
         myparcel = args[5]
 
+        await update.message.chat.send_action("upload_document")
         # Run R in a worker thread so the bot's event loop (Telegram polling) is not blocked
         filename = await asyncio.to_thread(call_sounding_script, station, yy, mm, dd, hh, myparcel)
         if filename:
-            await update.message.reply_text('Sounding plot generated successfully.')
-            # Uploads can take a while; the default 5 s read timeout produced "Timed out" errors
-            with open(filename, 'rb') as photo:
-                await update.message.reply_photo(
-                    photo=InputFile(photo),
+            # Sent as a file: Telegram needs about a minute to process these plots as photos
+            # (and would downsize them to 1280 px), while a file upload takes about a second
+            caption = f"{station} {yy}-{mm:02d}-{dd:02d} {hh:02d} UTC, parcel {myparcel}"
+            with open(filename, 'rb') as plot:
+                await update.message.reply_document(
+                    document=InputFile(plot, filename=os.path.basename(filename)),
+                    caption=caption,
                     read_timeout=60, write_timeout=60, connect_timeout=30, pool_timeout=30)
         else:
             await update.message.reply_text('Failed to generate the sounding plot.')

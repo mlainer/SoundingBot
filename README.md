@@ -58,7 +58,7 @@ Typical replies:
 
 | Situation | Reply |
 |-----------|-------|
-| Success | `Sounding plot generated successfully.` followed by the image |
+| Success | The plot as a PNG file (2000×1200 px) with a caption (station, time, parcel) |
 | Unknown station | `Error: Unknown station: <station>` |
 | No data or plotting failed | `Failed to generate the sounding plot.` |
 | Wrong number of arguments | `Usage: /sounding <station> <year> <mm> <dd> <hh> <parcel: MU\|ML\|SB\|none>` |
