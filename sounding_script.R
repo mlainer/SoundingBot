@@ -21,6 +21,9 @@ filename <- args[8]
 profile <- sounding_wyoming(wmo_id = wmo_id, yy = yy, mm = mm, dd = dd, hh = hh)
 profile_data <- profile[[1]]
 
+# Wyoming reports wind speed in m/s (climate labels the column SKNT), thundeR expects knots
+MS_TO_KNOTS <- 1.943844
+
 required_columns <- c("PRES", "HGHT", "TEMP", "DWPT", "DRCT", "SKNT")
 if (!is.data.frame(profile_data) || !all(required_columns %in% names(profile_data)) || nrow(profile_data) == 0) {
     stop(sprintf("No complete sounding data available for WMO station %d at %04d-%02d-%02d %02d UTC.",
@@ -35,4 +38,4 @@ sounding_save(filename = filename, title = title,
               parcel = myparcel, SRH_polygon = "03km",
               profile_data$PRES, profile_data$HGHT,
               profile_data$TEMP, profile_data$DWPT,
-              profile_data$DRCT, profile_data$SKNT)
+              profile_data$DRCT, profile_data$SKNT * MS_TO_KNOTS)

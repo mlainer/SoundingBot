@@ -69,7 +69,7 @@ altitude <- as.numeric(data[, 11])
 temp <- as.numeric(data[, 12])
 dpt <- as.numeric(data[, 14])
 wd <- as.numeric(data[, 15])
-ws <- as.numeric(data[, 16])
+ws <- as.numeric(data[, 16]) * 1.943844  # MeteoSwiss reports m/s, thundeR expects knots
 
 # Create the profile data frame
 profile <- data.frame(
