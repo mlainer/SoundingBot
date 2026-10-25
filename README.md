@@ -6,7 +6,7 @@
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
 ![Telegram](https://img.shields.io/badge/Telegram-bot-26A5E4?logo=telegram&logoColor=white)
 
-A Telegram bot that draws **atmospheric sounding plots** (Skew-T, hodograph and convective parameters) for European radiosonde stations. Send a station, a date and a parcel type, and the bot replies with the plot as an image.
+A Telegram bot that draws **atmospheric sounding plots** (Skew-T, hodograph and convective parameters) for European radiosonde stations. Send a station, a date and a parcel type, and the bot replies with the plot as an image file in full resolution (tap it to open; sending it as a Telegram photo would take about a minute and downscale it).
 
 > Unofficial hobby project for weather enthusiasts. Plots are for information only and not a substitute for official forecasts or warnings.
 
