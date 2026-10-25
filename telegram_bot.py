@@ -33,7 +33,7 @@ station_to_wmo_id = {
     "Munich": 10868,
     "Nimes": 7645,
     "Nottingham": 3377,
-    "Payerne": 66800,
+    "Payerne": 6610,
     "Pietro": 16144,
     "Prag": 11520,
     "Rome": 16242,
@@ -56,31 +56,26 @@ def call_sounding_script(station, yy, mm, dd, hh, myparcel):
     directory = os.path.join("soundings", station)
     os.makedirs(directory, exist_ok=True)
 
-    # Construct the filename and command to call the R script with the arguments
+    # Wyoming first; Payerne falls back to the MeteoSwiss script (local archive or latest sounding)
+    scripts = ["sounding_script.R"]
     if station == "Payerne":
-        filename = os.path.join(directory, f"{station}_{yy}{mm:02d}{dd:02d}_{hh:02d}00UTC.png")
-        command = [
-            "Rscript", "sounding_script_pay.R", 
-            station, str(wmo_id), str(yy), str(mm), str(dd), str(hh), str(myparcel), filename
-        ]
-    else:    
-        filename = os.path.join(directory, f"{station}_{yy}{mm:02d}{dd:02d}_{hh:02d}00UTC.png")
-        command = [
-            "Rscript", "sounding_script.R", 
-            station, str(wmo_id), str(yy), str(mm), str(dd), str(hh), str(myparcel), filename
-        ]
+        scripts.append("sounding_script_pay.R")
 
-    try:
-        # Execute the command
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
-        print(f"R script output: {result.stdout}")
-        return filename
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing R script: {e.stderr}")
-        return None
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        return None
+    filename = os.path.join(directory, f"{station}_{yy}{mm:02d}{dd:02d}_{hh:02d}00UTC.png")
+    for script in scripts:
+        command = [
+            "Rscript", script,
+            station, str(wmo_id), str(yy), str(mm), str(dd), str(hh), str(myparcel), filename
+        ]
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, check=True)
+            print(f"R script output ({script}): {result.stdout}")
+            return filename
+        except subprocess.CalledProcessError as e:
+            print(f"Error executing {script}: {e.stderr}")
+        except Exception as e:
+            print(f"Error running {script}: {str(e)}")
+    return None
 
 # Command handler for /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

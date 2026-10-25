@@ -27,7 +27,7 @@ A Telegram bot that draws **atmospheric sounding plots** (Skew-T, hodograph and 
 
 - Skew-T / hodograph plots with the parcel line of your choice (`MU`, `ML`, `SB` or none)
 - 30 stations across Europe, addressed by name
-- Payerne soundings from a local archive or, if the file is missing, the latest MeteoSwiss sounding
+- Payerne from Wyoming like all other stations, with an automatic fallback to MeteoSwiss data (local archive or latest sounding) if Wyoming fails
 - Runs completely in Docker; no R or Python setup on the host
 
 ## Commands
@@ -90,7 +90,7 @@ docker run -d --name sounding-plot-bot --restart unless-stopped \
 | Setting | Required | Description |
 |---------|----------|-------------|
 | `TELEGRAM_BOT_TOKEN` | yes | Bot token from @BotFather, passed as environment variable (via `.env` with Compose) |
-| `/data/Soundings` (volume) | no | Local Payerne archive, files named `YYYYMMDD-HH_PAY.csv`. See the commented volume in [docker-compose.yml](docker-compose.yml) |
+| `/data/Soundings` (volume) | no | Local Payerne archive (files named `YYYYMMDD-HH_PAY.csv`), only used by the MeteoSwiss fallback. See the commented volume in [docker-compose.yml](docker-compose.yml) |
 
 For older setups a `mysecret.py` containing `API_TOKEN = "..."` is still used if the environment variable is not set. Never commit your token: `.env` and `mysecret.py` are listed in `.gitignore`.
 
@@ -110,7 +110,7 @@ Use the name exactly as written. WMO IDs are the radiosonde station numbers.
 | Dublin | 3918 | Meiningen | 10548 | Valentia | 3953 |
 | Essen | 10410 | Milano | 16064 | Vienna | 11035 |
 | Idar-Oberstein | 10618 | Munich | 10868 | Zagreb | 14240 |
-| Jokioinen | 2963 | Nimes | 7645 | Payerne | 66800 |
+| Jokioinen | 2963 | Nimes | 7645 | Payerne | 6610 (06610) |
 | Legionowo | 12374 | Nottingham | 3377 | Pietro | 16144 |
 
 `Lipi` and `Lire` are named after the ICAO codes of Udine and Pratica di Mare, and `Pietro` is San Pietro Capofiume. To add a station, extend `station_to_wmo_id` in [telegram_bot.py](telegram_bot.py).
@@ -118,18 +118,21 @@ Use the name exactly as written. WMO IDs are the radiosonde station numbers.
 ## Data sources
 
 - **Most stations:** the University of Wyoming sounding archive, fetched with `sounding_wyoming()` from the R package [climate](https://github.com/bczernecki/climate).
-- **Payerne:** [MeteoSwiss open data](https://opendata.swiss) (`VZUS01.csv`). If no local file exists for the requested time, the bot downloads the latest sounding and plots that one. The plot title always shows the real date and time.
+- **Payerne:** also from Wyoming (WMO 06610). If that request fails, the bot falls back to [MeteoSwiss open data](https://opendata.swiss) (`VZUS01.csv`): it uses the local archive file for the requested time, or otherwise downloads the latest sounding and plots that one. In the fallback case the plot title shows the real date and time, which may differ from the requested one.
 
 Availability depends on these external services. If one is down, the plot cannot be generated.
 
 ## How it works
 
 ```
-Telegram  -->  telegram_bot.py  -->  Rscript sounding_script.R      -->  PNG  -->  Telegram
-                (python-telegram-bot)  Rscript sounding_script_pay.R         (thundeR)
+Telegram  -->  telegram_bot.py  -->  Rscript sounding_script.R  -->  PNG  -->  Telegram
+                (python-telegram-bot)   (Wyoming, thundeR)
+                          |
+                          +-- Payerne only, if Wyoming fails:
+                              Rscript sounding_script_pay.R (MeteoSwiss)
 ```
 
-The Python bot receives the command, maps the station name to its WMO ID, runs the matching R script, and sends the resulting PNG back. Plots are written to `soundings/<station>/` inside the container.
+The Python bot receives the command, maps the station name to its WMO ID, runs `sounding_script.R`, and sends the resulting PNG back. For Payerne it runs `sounding_script_pay.R` if the Wyoming script fails. Plots are written to `soundings/<station>/` inside the container.
 
 ## Troubleshooting
 
