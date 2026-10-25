@@ -34,7 +34,8 @@ A Telegram bot that draws **atmospheric sounding plots** (Skew-T, hodograph and 
 
 | Command | Description |
 |---------|-------------|
-| `/start` | Welcome message with usage hint |
+| `/start` | Welcome message with the help text |
+| `/help` | Shows the usage and examples |
 | `/stations` | Lists all available stations |
 | `/sounding <station> <year> <mm> <dd> <hh> <parcel>` | Generates the plot |
 
@@ -42,7 +43,7 @@ Arguments of `/sounding`:
 
 | Argument  | Meaning                                              | Example    |
 |-----------|------------------------------------------------------|------------|
-| `station` | Station name from `/stations` (**case-sensitive**)   | `Stuttgart`|
+| `station` | Station name from `/stations` (upper/lower case does not matter) | `Stuttgart`|
 | `year`    | 4-digit year                                         | `2024`     |
 | `mm dd`   | Month and day                                        | `07 01`    |
 | `hh`      | Hour in UTC (usually `00` or `12`)                   | `12`       |
@@ -59,9 +60,9 @@ Typical replies:
 | Situation | Reply |
 |-----------|-------|
 | Success | The plot as a PNG file (2000×1200 px) with a caption (station, time, parcel) |
-| Unknown station | `Error: Unknown station: <station>` |
+| Wrong or incomplete arguments, unknown station or parcel, invalid date | A short explanation of the problem followed by the help text |
+| Unknown command or plain text in a private chat | `Sorry, I did not understand that.` followed by the help text |
 | No data or plotting failed | `Failed to generate the sounding plot.` |
-| Wrong number of arguments | `Usage: /sounding <station> <year> <mm> <dd> <hh> <parcel: MU\|ML\|SB\|none>` |
 
 ## Quick start (Docker)
 
@@ -112,7 +113,7 @@ Anyone who finds your bot can use it. Keep the bot's username private or add a u
 
 ## Stations
 
-Use the name exactly as written. WMO IDs are the radiosonde station numbers.
+Use the name as written (case does not matter). WMO IDs are the radiosonde station numbers.
 
 | Station | WMO | Station | WMO | Station | WMO |
 |---------|-----|---------|-----|---------|-----|
@@ -154,7 +155,7 @@ The Python bot receives the command, maps the station name to its WMO ID, runs `
 |---------|------|
 | Container exits right away with "Telegram token missing" | Set `TELEGRAM_BOT_TOKEN` (see [Configuration](#configuration)) |
 | "Failed to generate the sounding plot." | No sounding for that station and time, or the data service is down. Check `docker compose logs` for the R error |
-| "Unknown station" | Station names are case-sensitive, see `/stations` |
+| "Unknown station" | Check the spelling, see `/stations` |
 | Nothing happens in Telegram | Make sure only one program polls the same bot token |
 | Overlapping text in the plot or `<U+00B0>` instead of `°` | The plot layout expects Helvetica-width fonts and a UTF-8 locale. The Dockerfile installs Liberation Sans and sets `LANG=C.UTF-8`; outside Docker install `fonts-liberation` and use a UTF-8 locale |
 

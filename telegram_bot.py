@@ -2,8 +2,9 @@ import asyncio
 import logging
 import subprocess
 import os
-from telegram import Update, InputFile
-from telegram.ext import Application, CommandHandler, ContextTypes
+from datetime import datetime
+from telegram import BotCommand, Update, InputFile
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
 logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s: %(message)s", level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -51,6 +52,40 @@ station_to_wmo_id = {
     "Zagreb": 14240,
 }
 
+HELP_TEXT = (
+    "SoundingBot: atmospheric sounding plots (Skew-T, hodograph, parameters)\n\n"
+    "/sounding <station> <year> <mm> <dd> <hh> <parcel>\n"
+    "  Example: /sounding Stuttgart 2024 07 01 12 MU\n"
+    "  hh = hour in UTC (usually 00 or 12)\n"
+    "  parcel = MU, ML, SB or none\n\n"
+    "/stations - list available stations\n"
+    "/help - show this message"
+)
+
+PARCELS = {"MU": "MU", "ML": "ML", "SB": "SB", "NONE": "none"}
+STATIONS_BY_LOWER = {name.lower(): name for name in station_to_wmo_id}
+
+
+def parse_sounding_args(args):
+    """Validate the /sounding arguments; raises ValueError with a user-facing message."""
+    if len(args) != 6:
+        raise ValueError("Expected 6 arguments, got %d." % len(args))
+    station = STATIONS_BY_LOWER.get(args[0].lower())
+    if station is None:
+        raise ValueError(f"Unknown station: {args[0]} (see /stations)")
+    try:
+        yy, mm, dd, hh = (int(a) for a in args[1:5])
+        if not 1900 <= yy <= 2100:
+            raise ValueError
+        datetime(yy, mm, dd, hh)
+    except ValueError:
+        raise ValueError("Invalid date or time. Use a 4-digit year, e.g. 2024 07 01 12.") from None
+    parcel = PARCELS.get(args[5].upper())
+    if parcel is None:
+        raise ValueError(f"Unknown parcel type: {args[5]} (use MU, ML, SB or none)")
+    return station, yy, mm, dd, hh, parcel
+
+
 # Function to call the sounding script
 def call_sounding_script(station, yy, mm, dd, hh, myparcel):
     if station not in station_to_wmo_id:
@@ -83,28 +118,26 @@ def call_sounding_script(station, yy, mm, dd, hh, myparcel):
             print(f"Error running {script}: {str(e)}")
     return None
 
-# Command handler for /start
+# Command handler for /start and /help
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(
-        'Hi! Use /sounding <station> <year> <mm> <dd> <hh> <parcel> to get the sounding plot.\n'
-        'Parcel: MU, ML, SB or none. Example: /sounding Stuttgart 2024 07 01 12 MU\n'
-        'List stations with /stations.')
+    await update.message.reply_text("Hi! " + HELP_TEXT)
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text(HELP_TEXT)
+
+# Anything that is not a known command or a plain request gets the help text
+async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text("Sorry, I did not understand that.\n\n" + HELP_TEXT)
 
 # Command handler for /sounding
 async def sounding(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
-        args = context.args
-        if len(args) != 6:
-            await update.message.reply_text('Usage: /sounding <station> <year> <mm> <dd> <hh> <parcel: MU|ML|SB|none>')
-            return
-        
-        station = args[0]
-        yy = int(args[1])
-        mm = int(args[2])
-        dd = int(args[3])
-        hh = int(args[4])
-        myparcel = args[5]
+        station, yy, mm, dd, hh, myparcel = parse_sounding_args(context.args)
+    except ValueError as e:
+        await update.message.reply_text(f"{e}\n\n{HELP_TEXT}")
+        return
 
+    try:
         await update.message.chat.send_action("upload_document")
         # Run R in a worker thread so the bot's event loop (Telegram polling) is not blocked
         filename = await asyncio.to_thread(call_sounding_script, station, yy, mm, dd, hh, myparcel)
@@ -128,23 +161,40 @@ async def stations(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     station_list = "\n".join(station_to_wmo_id.keys())
     await update.message.reply_text(f"Available stations:\n{station_list}")
 
+async def post_init(application: Application) -> None:
+    # Fills the command menu shown in Telegram
+    try:
+        await application.bot.set_my_commands([
+            BotCommand("sounding", "Plot a sounding: <station> <year> <mm> <dd> <hh> <parcel>"),
+            BotCommand("stations", "List available stations"),
+            BotCommand("help", "Show help"),
+        ])
+    except Exception:
+        logger.warning("Could not set the command menu", exc_info=True)
+
 def main() -> None:
     # Create the Application and pass it your bot's token.
     application = (
         Application.builder()
         .token(API_TOKEN)
         .read_timeout(30).write_timeout(30).connect_timeout(30).pool_timeout(30)
+        .post_init(post_init)
         .build()
     )
 
     # Add command handler to start the bot
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
 
     # Add command handler for sounding
     application.add_handler(CommandHandler("sounding", sounding))
 
     # Add command handler for stations
     application.add_handler(CommandHandler("stations", stations))
+
+    # Must stay last: unknown commands and plain text in private chats get the help text
+    application.add_handler(MessageHandler(filters.COMMAND, unknown))
+    application.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, unknown))
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT
